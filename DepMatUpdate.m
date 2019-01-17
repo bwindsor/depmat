@@ -1,4 +1,4 @@
-function DepMatUpdate(repoList, varargin)
+function DepMatUpdate(repoList, projectDir, varargin)
     % DepMatUpdate. Clones or updates all repositories in a DepMatRepo list 
     %
     %
@@ -11,9 +11,9 @@ function DepMatUpdate(repoList, varargin)
     %
    
     
-    forcePathUpdate = nargin > 1 && strcmp(varargin{1}, 'force');
+    forcePathUpdate = nargin > 2 && strcmp(varargin{1}, 'force');
     
-    rootSourceDir = fullfile(getUserDirectory, 'depmat', 'Source');
+    rootSourceDir = fullfile(projectDir, 'dependencies');
     
     depMat = DepMat(repoList, rootSourceDir);
     if ~depMat.isGitInstalled

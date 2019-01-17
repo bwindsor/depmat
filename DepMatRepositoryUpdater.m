@@ -52,17 +52,13 @@ classdef DepMatRepositoryUpdater < handle
             % Attempts to clone the repository. Only do this if the status
             % is DepMatStatus.DirectoryNotFound, NotUnderSourceControl or FetchFailure
 
-            if ~(exist(obj.SourceDir, 'dir') == 7)
-                mkdir(obj.SourceDir);
-            end
-            
-            lastDir = pwd;
+            %if ~(exist(obj.SourceDir, 'dir') == 7)
+            %    mkdir(obj.SourceDir);
+            %end
+
             try
-                cd(obj.SourceDir);
-                success = obj.internalCloneRepo;
-                cd(lastDir);
+                success = obj.internalAddSubmodule;
             catch ex
-                cd(lastDir);
                 success = false;
             end            
         end
@@ -75,6 +71,24 @@ classdef DepMatRepositoryUpdater < handle
             try
                 cd(obj.SourceDir);
                 success = obj.internalUpdateRepo;
+                cd(lastDir);
+            catch ex
+                cd(lastDir);
+                success = false;
+            end
+        end
+        
+        function success = initSubmodule(obj)
+            lastDir = pwd;
+            try
+                success = true;
+                if ~DepMat.execute(['git submodule update --init dependencies/' obj.RepoDef.Name])
+                    success = false;
+                end
+                cd(obj.SourceDir);
+                if ~DepMat.execute(['git checkout ' obj.RepoDef.Branch ' && git pull'])
+                    success = false;
+                end                
                 cd(lastDir);
             catch ex
                 cd(lastDir);
@@ -97,9 +111,17 @@ classdef DepMatRepositoryUpdater < handle
             end
             
             switch status
+                case DepMatStatus.NotUnderSourceControl
+                    success = obj.initSubmodule;
+                    if success
+                        disp([obj.RepoDef.Name ' submodule initialised']);
+                        changed = true;
+                    else
+                        disp(['! ' obj.RepoDef.Name ' could not be added']);
+                    end
                 case {DepMatStatus.DirectoryNotFound, ...
                         DepMatStatus.NotUnderSourceControl, ...
-                        DepMatStatus.FetchFailure}
+                        DepMatStatus.FetchFailure}                    
                     success = obj.cloneRepo;
                     if success
                         disp([obj.RepoDef.Name ' added']);
@@ -147,7 +169,7 @@ classdef DepMatRepositoryUpdater < handle
                 return;
             end
             
-            if ~(7 == exist(fullfile(obj.SourceDir, '.git'), 'dir'))
+            if ~(2 == exist(fullfile(obj.SourceDir, '.git'), 'file'))
                 status = DepMatStatus.NotUnderSourceControl;
                 return;
             end
@@ -200,6 +222,15 @@ classdef DepMatRepositoryUpdater < handle
             success = ~isempty(pullResult);
         end
         
+        function success = internalAddSubmodule(obj)
+            DepMat.execute('git config --global submodule.recurse true');
+            success = true;
+            if ~DepMat.execute(['git submodule add -b ' obj.RepoDef.Branch ' ' obj.RepoDef.Url ' dependencies/' obj.RepoDef.Name])
+                success = false;
+                return;
+            end
+        end
+                
         function success = internalCloneRepo(obj)
             
             % Avoid initialisation if it has already been done, to avoid errors

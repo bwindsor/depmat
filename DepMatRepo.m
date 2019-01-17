@@ -20,6 +20,9 @@ classdef DepMatRepo
     methods
         function obj = DepMatRepo(name, branch, url, folderName)
             if nargin > 0
+                if nargin < 4
+                    folderName = name;
+                end
                 obj.Name = name;
                 obj.Branch = branch;
                 obj.Url = url;
